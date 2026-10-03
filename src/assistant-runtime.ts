@@ -1,176 +1,74 @@
-import {
-  WebWorkerMLCEngine,
-  prebuiltAppConfig,
-  deleteModelAllInfoInCache,
-} from "@mlc-ai/web-llm";
-import {
-  containsUnsupportedForecast,
-  assistantError,
-  visibleAssistantText,
-  type assistantMessages,
-} from "./assistant-context";
-import { assistantModels, type AssistantModel } from "./assistant-config";
-export const modelConfig = {
-  ...prebuiltAppConfig,
-  cacheBackend: "indexeddb" as const,
-  model_list: prebuiltAppConfig.model_list.filter((m) =>
-    assistantModels.some((choice) => choice.id === m.model_id),
-  ),
-};
+import type { AssistantRequest } from "./assistant-request";
 
-type NavigatorGPU = Navigator & {
-  gpu?: {
-    requestAdapter(): Promise<{
-      features: { has(feature: string): boolean };
-    } | null>;
+export async function readAssistantStream(
+  response: Response,
+  onText: (text: string) => void,
+  onTool: (label: string) => void,
+) {
+  if (!response.ok) {
+    const message = response.status === 429
+      ? "Zu viele Fragen in kurzer Zeit. Bitte warte eine Minute."
+      : "Der KI-Dienst ist gerade nicht erreichbar. Bitte versuche es erneut.";
+    let details: unknown;
+    try { details = await response.json(); } catch { /* HTML firewall errors use the fallback. */ }
+    throw new Error(details && typeof details === "object" && "error" in details &&
+      typeof details.error === "string" ? details.error : message);
+  }
+  if (!response.body) throw new Error("Der KI-Dienst hat keine Antwort geliefert.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let pending = "";
+  let text = "";
+  let complete = false;
+  const consume = (line: string) => {
+    if (!line.trim()) return;
+    let event;
+    try { event = JSON.parse(line); }
+    catch { throw new Error("Der KI-Dienst hat eine ungültige Antwort geliefert. Bitte versuche es erneut."); }
+    if (!event || typeof event !== "object") throw new Error("Der KI-Dienst hat eine ungültige Antwort geliefert.");
+    if (event.type === "error") throw new Error(event.message || "Die KI-Antwort wurde unterbrochen.");
+    if (event.type === "text" && typeof event.text === "string") {
+      text += event.text;
+      onText(text);
+    } else if (event.type === "tool" && typeof event.label === "string") onTool(event.label);
+    else if (event.type === "done") complete = true;
   };
-};
-export async function checkAssistantSupport() {
-  if (!window.isSecureContext || !(navigator as NavigatorGPU).gpu) {
-    throw new Error(
-      "Dieser Browser unterstützt die lokale KI nicht. Verwende einen aktuellen Browser mit WebGPU, zum Beispiel Chrome oder Edge auf einem Computer.",
-    );
-  }
-  const adapter = await (navigator as NavigatorGPU).gpu!.requestAdapter();
-  if (!adapter)
-    throw new Error(
-      "Der Browser stellt keine passende Grafikkarte bereit. Prüfe die Hardwarebeschleunigung in den Browsereinstellungen.",
-    );
-  if (!adapter.features.has("shader-f16"))
-    throw new Error(
-      "Die Grafikkarte unterstützt dieses KI-Modell nicht (shader-f16 fehlt). Die regelbasierten Tipps kannst du weiterhin verwenden.",
-    );
-}
-
-export class LocalAssistant {
-  private worker: Worker;
-  private engine: WebWorkerMLCEngine;
-  private rejectFailure?: (error: Error) => void;
-  private failure: Promise<never>;
-  private closed = false;
-  private interrupted = false;
-
-  constructor(private readonly onProgress: (progress: number) => void) {
-    this.worker = new Worker(
-      new URL("./assistant.worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    this.failure = new Promise((_, reject) => {
-      this.rejectFailure = reject;
-    });
-    // A cancelled runtime may have no pending call to receive the rejection.
-    void this.failure.catch(() => {});
-    this.engine = this.createEngine();
-  }
-
-  private createEngine() {
-    this.worker.onerror = () =>
-      this.rejectFailure?.(
-        new Error("Die lokale KI wurde unterbrochen. Starte sie erneut."),
-      );
-    return new WebWorkerMLCEngine(this.worker, {
-      appConfig: modelConfig,
-      logLevel: "WARN",
-      initProgressCallback: ({ progress }) => {
-        if (!this.closed) this.onProgress(Math.min(1, Math.max(0, progress)));
-      },
-    });
-  }
-
-  async load(model: AssistantModel) {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await Promise.race([
-          this.engine.reload(model, { context_window_size: 4096 }),
-          this.failure,
-        ]);
-        return;
-      } catch (error) {
-        if (
-          this.closed ||
-          attempt === 2 ||
-          !/NetworkError|Modell-Datei|Failed to fetch/i.test(
-            assistantError(error),
-          )
-        )
-          throw error;
-        // Discard the entire failed runtime, including partial GPU state and
-        // in-flight downloads. Shared model-cache entries survive the worker.
-        this.worker.onerror = null;
-        this.worker.terminate();
-        await Promise.race([
-          new Promise((resolve) => setTimeout(resolve, 3000 * (attempt + 1))),
-          this.failure,
-        ]);
-        this.worker = new Worker(
-          new URL("./assistant.worker.ts", import.meta.url),
-          { type: "module" },
-        );
-        this.engine = this.createEngine();
+  try {
+    while (!complete) {
+      const { value, done } = await reader.read();
+      pending += decoder.decode(value, { stream: !done });
+      const lines = pending.split("\n");
+      pending = lines.pop() ?? "";
+      for (const line of lines) consume(line);
+      if (done) {
+        if (pending.trim()) consume(pending);
+        break;
       }
     }
-  }
-
-  async answer(
-    messages: ReturnType<typeof assistantMessages>,
-    onText: (text: string) => void,
-  ) {
-    this.interrupted = false;
-    const task = async () => {
-      const stream = await this.engine.chat.completions.create({
-        messages,
-        stream: true,
-        temperature: 0.2,
-        max_tokens: 420,
-        repetition_penalty: 1.03,
-        extra_body: { enable_thinking: false },
-      });
-      let answer = "";
-      for await (const chunk of stream) {
-        if (this.closed) break;
-        answer += chunk.choices[0]?.delta.content ?? "";
-        const visible = visibleAssistantText(answer);
-        if (containsUnsupportedForecast(visible)) {
-          this.stop();
-          throw new Error(
-            "Die KI-Antwort enthielt eine unbelegte Gewinnprognose und wurde verworfen. Vergangene Zahlen sagen die nächste Ziehung nicht voraus. Bitte starte die KI neu und frage nach den berechneten Daten oder Auswahlregeln.",
-          );
-        }
-        onText(visible);
-      }
-      if (
-        !visibleAssistantText(answer).trim() &&
-        !this.closed &&
-        !this.interrupted
-      )
-        throw new Error(
-          "Das Modell hat keine Antwort geliefert. Formuliere die Frage kürzer und versuche es erneut.",
-        );
-    };
-    await Promise.race([task(), this.failure]);
-  }
-
-  stop() {
-    this.interrupted = true;
-    this.engine.interruptGenerate();
-  }
-  close() {
-    if (this.closed) return;
-    this.closed = true;
-    this.worker.terminate();
-    this.rejectFailure?.(new Error("KI gestoppt."));
+    if (!complete || !text.trim()) throw new Error("Die KI-Antwort wurde unterbrochen. Bitte versuche es erneut.");
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
-export async function removeAssistantCache() {
-  const ids = [
-    ...assistantModels.map((model) => model.id),
-    // Models used by earlier versions of this app during development.
-    "Qwen3-1.7B-q4f16_1-MLC",
-    "Qwen3-0.6B-q4f16_1-MLC",
-  ];
-  for (const cacheBackend of ["cache", "indexeddb"] as const) {
-    const config = { ...prebuiltAppConfig, cacheBackend };
-    for (const id of ids) await deleteModelAllInfoInCache(id, config);
+export class CloudAssistant {
+  private controller?: AbortController;
+  async answer(request: AssistantRequest, onText: (text: string) => void, onTool: (label: string) => void) {
+    this.stop();
+    const controller = new AbortController();
+    this.controller = controller;
+    const timeout = setTimeout(() => controller.abort(new Error("Die Antwort dauert zu lange. Bitte versuche es erneut.")), 65_000);
+    try {
+      const response = await fetch("/api/assistant", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request), signal: controller.signal,
+      });
+      await readAssistantStream(response, onText, onTool);
+    } finally {
+      clearTimeout(timeout);
+      if (this.controller === controller) this.controller = undefined;
+    }
   }
+  stop() { this.controller?.abort(); }
 }

@@ -189,6 +189,22 @@ summary:focus-visible {
   margin-top: 8px;
   color: #69745d;
 }
+.assistant-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.assistant-tools span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #e4edde;
+  color: #526848;
+}
 .assistant-prompts {
   display: flex;
   gap: 7px;

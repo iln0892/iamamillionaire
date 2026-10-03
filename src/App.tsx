@@ -544,7 +544,7 @@ export default function App() {
             <Database size={14} />
             {persistenceError
               ? "Speicher eingeschränkt"
-              : "Lokal auf deinem Gerät"}
+              : "Daten lokal gespeichert"}
           </span>
         </header>
         <main id="main-content" tabIndex={-1}>
@@ -2027,8 +2027,10 @@ function DataView({
               <strong>Dein Browser ist dein Speicher.</strong>
               <p>
                 Persönliche Tipps und importierte Ziehungen werden in einer
-                lokalen SQLite-Datenbank gespeichert. Sie werden nicht an einen
-                Server übertragen.
+                lokalen SQLite-Datenbank gespeichert. Beim Senden einer Frage
+                erhält der Cloud-KI-Assistent bis zu drei gespeicherte und drei
+                erzeugte Tippfelder. Sicherungsdateien und Import-Ziehungen
+                werden dabei nicht übertragen.
               </p>
             </div>
           </div>
@@ -2179,8 +2181,10 @@ function DataView({
             <h3>Orakel & KI</h3>
             <p>
               Das Orakel arbeitet lokal mit Regeln und Zufall. Es verwendet
-              keine externe KI. Mit dem KI-Briefing kannst du Daten und Tipps
-              für eine gesonderte KI-Auswertung exportieren.
+              keine externe KI. Der KI-Assistent erklärt Statistiken, Regeln
+              und vorhandene Tipps über Vercel AI Gateway. Beim Senden einer
+              Frage werden der begrenzte Gesprächskontext, Filter und bis zu
+              sechs Tippfelder an den Modellanbieter übertragen.
             </p>
           </div>
         </div>

@@ -120,7 +120,7 @@ test("assistant uses bounded conversation and data context with no generated lot
   assert.match(request[0].content, /Führe keine Aktionen aus/);
 });
 
-test("local model output hides complete and streaming thought markers", () => {
+test("model output hides complete and streaming thought markers", () => {
   assert.equal(visibleAssistantText("<think>\n\n</think>\n\nHallo"), "Hallo");
   assert.equal(visibleAssistantText("<think>interner Text"), "");
   assert.equal(visibleAssistantText("<thi"), "");
@@ -129,7 +129,7 @@ test("local model output hides complete and streaming thought markers", () => {
   assert.equal(visibleAssistantText("Hallo\n Welt"), "Hallo\n Welt");
 });
 
-test("worker errors remain readable when the library rejects with a string", () => {
+test("assistant errors remain readable when a service rejects with a string", () => {
   assert.equal(assistantError(new Error("GPU unavailable")), "GPU unavailable");
   assert.equal(
     assistantError("NetworkError: failed download"),

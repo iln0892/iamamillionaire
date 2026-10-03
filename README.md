@@ -1,6 +1,6 @@
 # millionaire · Dein Lotto-Labor
 
-Persönliches Lotto-Labor zur Analyse von LOTTO 6aus49 und Eurojackpot. Deutsche Oberfläche, offizielles WestLotto-Archiv, lokale SQLite-Datenbank, regelbasierte Tipps und ein lokaler KI-Assistent. Kein Login und keine externen KI-API-Aufrufe.
+Persönliches Lotto-Labor zur Analyse von LOTTO 6aus49 und Eurojackpot. Deutsche Oberfläche, offizielles WestLotto-Archiv, lokale SQLite-Datenbank, regelbasierte Tipps und ein Cloud-KI-Assistent über Vercel AI SDK und AI Gateway. Kein Login.
 
 ## Starten
 
@@ -18,7 +18,7 @@ Die App läuft unter `http://127.0.0.1:5173/iamamillionaire/`. Schriften, SQLite
 - Ziehungsarchiv mit Datum-/Zahlensuche, Jahresfilter, Gewinnquoten und historischen Varianten.
 - Häufigkeiten, Ziehungsabstände, Summen, Parität und Dekaden.
 - Regelbasierte Tipps mit konfigurierbaren Filtern, Quicktipp, Speichern und Export.
-- KI-Assistent mit echten, lokal im Browser berechneten Antworten zu Filtern, Statistiken und den ersten drei zuletzt erzeugten Tippfeldern.
+- KI-Assistent mit lesenden Werkzeugen für offizielle Statistiken, Filter und jeweils die ersten drei erzeugten bzw. gespeicherten Tippfelder.
 - Häufige Zahlenpaare und Tripel sowie rollierende Häufigkeitsverläufe.
 - Backtests in einem Worker: gleiche Anzahl Felder, unabhängige Zufallsstrategie, reproduzierbarer Seed, zeitlich korrekte Historie.
 - JSON-/CSV-Import mit Prüfung und Transaktion; Konflikte überschreiben keine Ziehungen. Export als JSON, CSV und SQLite.
@@ -54,25 +54,37 @@ git commit -m "Update lottery lab"
 git push origin main
 ```
 
-Production: [iln0892.github.io/iamamillionaire](https://iln0892.github.io/iamamillionaire/). Die App und der Quellcode sind öffentlich zugänglich; persönliche Daten sind gerätelokal und werden nicht veröffentlicht. Deployment-Quellcode enthält keine API-Schlüssel. [GitHub-Dokumentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+GitHub Pages: [iln0892.github.io/iamamillionaire](https://iln0892.github.io/iamamillionaire/). Die statische Version bietet das regelbasierte Labor und verlinkt für den Cloud-Assistenten auf Vercel. Die App und der Quellcode sind öffentlich zugänglich; persönliche Sicherungsdateien werden nicht veröffentlicht. Deployment-Quellcode enthält keine API-Schlüssel. [GitHub-Dokumentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 ## Production über Vercel / main
 
 Vercel ist ebenfalls mit dem GitHub-Repository und `main` verbunden. `vercel.json` legt das Framework `vite`, den Install-Befehl `npm ci`, den Build-Befehl `npm run build:vercel` und das Ausgabe-Verzeichnis `docs` fest. Die Root Directory bleibt leer, da `package.json` im Repository-Hauptverzeichnis liegt. Das Projekt benötigt kein Next.js.
 
+Production mit KI: [iamamillionaire.vercel.app](https://iamamillionaire.vercel.app/). Der serverseitige Endpunkt `api/assistant.ts` wird als Vercel Node.js Function bereitgestellt; offizieller SQLite-Snapshot und WASM werden in die Function aufgenommen. Die Gateway-Authentifizierung erfolgt automatisch über die Projekt-OIDC-Identität. Es wird kein Schlüssel an den Browser gesendet.
+
 `npm run build:vercel` erzeugt einen Build mit Basis-Pfad `/` für die Vercel-Domain. Der reguläre `npm run build` erzeugt weiterhin den GitHub-Pages-Build mit `/iamamillionaire/`; ausschließlich dieser Build wird in `docs/` committed. Vercel baut bei jedem Push auf `main` selbst neu. [Vercel-Konfiguration](https://vercel.com/docs/project-configuration/vercel-json).
 
 ## KI
 
-Das Orakel erzeugt Tipps unverändert mit lokalen Regeln und kryptografischem Zufall. Der KI-Assistent erklärt diese Auswahl und historische Statistiken; er verändert keine Regeln, erzeugt keine Tippfelder und prognostiziert keine Gewinner. Generierte Felder bleiben beim Wechsel zum Assistenten für die aktuelle Sitzung erhalten. Für die erste Nutzung „KI-Assistent“ öffnen und „KI laden & starten“ anklicken.
+Das Orakel erzeugt Tipps mit lokalen Regeln und kryptografischem Zufall. Der KI-Assistent erklärt diese Auswahl und historische Statistiken; er verändert keine Regeln und erzeugt keine Tippfelder. Generierte Felder bleiben beim Wechsel zum Assistenten für die aktuelle Sitzung erhalten. Auf Vercel einfach „KI-Assistent“ öffnen und eine Frage senden; kein Modell-Download und keine WebGPU nötig.
 
-Die KI verwendet [WebLLM](https://github.com/mlc-ai/web-llm) 0.2.85 in einem eigenen Worker. Zur Wahl stehen [Qwen3.5](https://huggingface.co/Qwen/Qwen3.5-4B) 4B (etwa 2,4 GB erster Download, etwa 4 GB GPU-Speicher) und Qwen3.5 2B (etwa 1,1 GB Download, etwa 2,3 GB GPU-Speicher, einfachere Antworten). Benötigt HTTPS oder localhost, WebGPU mit `shader-f16` und ausreichend Speicher. Die Browser-App bleibt ohne passende Hardware als regelbasiertes Labor benutzbar.
+Serverseitig laufen AI SDK 7 und `google/gemini-2.5-flash` über [Vercel AI Gateway](https://vercel.com/docs/ai-gateway). Das Modell nutzt lesende Werkzeuge für Häufigkeiten/Pausen/Summen, aktive Regeln, vorhandene Felder und die letzte Ziehung. Konkrete Statistikwerte werden aus dem offiziellen Archiv berechnet. Lokale Import-Ziehungen sind nicht Bestandteil dieses Archivs. Aktuelle Filter und die Filter zum Erzeugungszeitpunkt bleiben getrennt.
 
-Modellgewichte und Tokenizer werden erst beim Start von Hugging Face, die Modellbibliothek von MLC über GitHub geladen und in separaten IndexedDB-Modellspeichern gecacht. Vorübergehende Downloadfehler werden mit begrenzten automatischen Wiederholungen behandelt; bereits gecachte Dateien werden wiederverwendet. Fragen, persönliche Tippfelder und berechnete Kontextdaten werden nicht an diese Anbieter gesendet. Der Gesprächsverlauf bleibt im Arbeitsspeicher für die Sitzung; Spielwechsel und „Neues Gespräch“ leeren ihn. Der Modellcache kann separat gelöscht werden, ohne die Lotto-Datenbank zu verändern. Antworten werden als Text gerendert und können Fehler enthalten.
+Bei jeder Frage gehen die aktuelle Frage, höchstens zwei vorherige Frage-Antwort-Paare, Zeitraum, Filter sowie jeweils höchstens drei erzeugte und drei gespeicherte Tippfelder an den Server; die benötigten Werte werden über das Gateway an Google Gemini übertragen. Freie Importtexte, Tippbeschreibungen, IDs und Sicherungsdateien werden nicht übernommen. Die App speichert den Chat nur im Arbeitsspeicher; Spielwechsel und „Neues Gespräch“ leeren ihn. SDK-Telemetrie und die Ausgabe von Fragen in Anwendungslogs sind deaktiviert. Die Gateway-Option `disallowPromptTraining` ist aktiv. Dies ist kein vollständig lokaler Chat.
 
-Der Kontext unterscheidet Archiv und gewählten Analysezeitraum sowie aktuelle Filter und die Filter zum Erzeugungszeitpunkt. Freie Importtexte werden nicht als Kontext übernommen. Pro Anfrage werden maximal die letzten zwei Frage-Antwort-Paare und die aktuelle Frage verwendet. Antworten sind auf 420 Tokens begrenzt. Ein zusätzlicher Textcheck verwirft typische unbelegte Gewinnprognosen, kann aber nicht alle Fehler erkennen. Keine externen API-Schlüssel, laufenden KI-API-Kosten oder zusätzlicher Backend-Dienst nötig. Die Modell-Lizenz ist Apache 2.0; Hinweise zur Runtime liegen in `public/licenses/`.
+Der Server validiert Rollen, Größen, Zeiträume und Zahlenbereiche. Nutzer können kein Modell, Systemprompt oder Werkzeug vorgeben. Maximal 32 KiB pro Anfrage, 1.000 Zeichen pro Frage, drei Modell-Schritte, 700 Ausgabetokens pro Schritt und 55 Sekunden Gesamtlaufzeit. Die Vercel Firewall begrenzt `POST /api/assistant` auf 10 Anfragen pro Minute und IP. Das Gateway verbraucht das vorhandene Guthaben; kein Guthabenkauf oder automatisches Aufladen wurde eingerichtet. Bei ausgeschöpftem Guthaben zeigt der Chat einen Fehler. Das regelbasierte Labor funktioniert weiter.
 
-Eine spätere OpenAI-Anbindung kann über einen separaten Backend-Dienst erfolgen. API-Schlüssel gehören dabei ausschließlich auf den Server, niemals in die öffentliche statische App: [offizielle OpenAI-Dokumentation](https://developers.openai.com/api/reference/overview).
+Antworten werden als Text gestreamt und können Fehler enthalten. Ein zusätzlicher Textcheck verwirft typische unbelegte Gewinnprognosen, kann aber nicht alle Fehler erkennen.
+
+Für lokale Arbeit am Backend mit vorhandener Vercel-Anmeldung:
+
+```sh
+vercel link
+vercel env pull .env.local
+vercel dev
+```
+
+`.env.local` und `.vercel/` sind vom Repository ausgeschlossen. `npm run dev` startet nur das Frontend; der KI-Endpunkt benötigt `vercel dev` oder die Production-App. [OIDC-Authentifizierung](https://vercel.com/docs/ai-gateway/authentication-and-byok/oidc).
 
 ## Prüfung
 

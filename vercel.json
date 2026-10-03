@@ -3,5 +3,12 @@
   "framework": "vite",
   "installCommand": "npm ci",
   "buildCommand": "npm run build:vercel",
-  "outputDirectory": "docs"
+  "outputDirectory": "docs",
+  "functions": {
+    "api/assistant.ts": {
+      "maxDuration": 60,
+      "supportsCancellation": true,
+      "includeFiles": "{public/data/lottery.sqlite,node_modules/sql.js/dist/sql-wasm.wasm}"
+    }
+  }
 }
