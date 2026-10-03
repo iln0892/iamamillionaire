@@ -42,7 +42,7 @@ Finanzielle Backtests nutzen ausschließlich standardisierte Quoten ab 2022. Unb
 
 ## Production über GitHub / main
 
-Das Repository bleibt privat. Der fertige Build liegt versioniert in `docs/`; `.nojekyll` deaktiviert Jekyll. GitHub Pages wird auf `main` und `/docs` eingerichtet. Damit veröffentlicht ein Push auf `main` die geprüften Dateien automatisch über GitHubs Pages-Pipeline. Für neue Änderungen:
+Das Repository ist öffentlich. Der fertige Build liegt versioniert in `docs/`; `.nojekyll` deaktiviert Jekyll. GitHub Pages wird auf `main` und `/docs` eingerichtet. Damit veröffentlicht ein Push auf `main` die geprüften Dateien automatisch über GitHubs Pages-Pipeline. Für neue Änderungen:
 
 ```sh
 npm ci
@@ -53,7 +53,7 @@ git commit -m "Update lottery lab"
 git push origin main
 ```
 
-GitHub Pages aus einem privaten Repository setzt einen passenden GitHub-Tarif voraus. Die App-URL ist öffentlich zugänglich; persönliche Daten sind gerätelokal und werden nicht veröffentlicht. Deployment-Quellcode enthält keine API-Schlüssel. [GitHub-Dokumentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+Production: [iln0892.github.io/iamamillionaire](https://iln0892.github.io/iamamillionaire/). Die App und der Quellcode sind öffentlich zugänglich; persönliche Daten sind gerätelokal und werden nicht veröffentlicht. Deployment-Quellcode enthält keine API-Schlüssel. [GitHub-Dokumentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 ## KI
 
