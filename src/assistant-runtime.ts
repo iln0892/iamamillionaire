@@ -12,6 +12,7 @@ import {
 import { assistantModels, type AssistantModel } from "./assistant-config";
 export const modelConfig = {
   ...prebuiltAppConfig,
+  cacheBackend: "indexeddb" as const,
   model_list: prebuiltAppConfig.model_list.filter((m) =>
     assistantModels.some((choice) => choice.id === m.model_id),
   ),
@@ -162,6 +163,14 @@ export class LocalAssistant {
 }
 
 export async function removeAssistantCache() {
-  for (const model of assistantModels)
-    await deleteModelAllInfoInCache(model.id, modelConfig);
+  const ids = [
+    ...assistantModels.map((model) => model.id),
+    // Models used by earlier versions of this app during development.
+    "Qwen3-1.7B-q4f16_1-MLC",
+    "Qwen3-0.6B-q4f16_1-MLC",
+  ];
+  for (const cacheBackend of ["cache", "indexeddb"] as const) {
+    const config = { ...prebuiltAppConfig, cacheBackend };
+    for (const id of ids) await deleteModelAllInfoInCache(id, config);
+  }
 }
