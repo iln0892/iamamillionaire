@@ -1,0 +1,35 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {indexedDB} from 'fake-indexeddb';
+import * as storage from '../src/storage';
+globalThis.indexedDB=indexedDB;
+globalThis.fetch=async(input)=>{
+ const path=String(input).replace('/iamamillionaire/','public/');
+ return new Response(readFileSync(path),{status:200});
+};
+test('SQLite persistence, JSON/CSV roundtrip and import conflict rollback',async()=>{
+ await storage.initialize();
+ const count=storage.readDraws().length;
+ const tip={id:'test-persistence',game:'lotto' as const,created:'2026-01-01T12:00:00Z',numbers:[1,12,23,34,45,49],extras:[0],explanation:'Test'};
+ await storage.saveTip(tip);
+ await storage.initialize();
+ assert.deepEqual(storage.readTips(),[tip]);
+ const roundtrip=await storage.importData(storage.exportJson(),false);
+ assert.equal(roundtrip.added,0);assert.equal(roundtrip.skipped,count);assert.equal(storage.readTips().length,1);
+ const csv=await storage.importData(storage.exportCsv(),true);
+ assert.equal(csv.added,0);assert.equal(csv.skipped,count);
+ const base=storage.readDraws().find(d=>d.game==='lotto')!;
+ const extra={...base,date:'2026-10-01',numbers:[1,2,3,4,5,6],extras:[0]};
+ const conflict={...base,numbers:[1,2,3,4,5,6]};
+ await assert.rejects(storage.importData(JSON.stringify([extra,conflict]),false),/Konflikt/);
+ assert.equal(storage.readDraws().length,count);
+ await storage.initialize();assert.equal(storage.readDraws().length,count);
+ const accepted=await storage.importData(JSON.stringify([extra]),false);
+ assert.equal(accepted.added,1);
+ await storage.initialize();assert.equal(storage.readDraws().length,count+1);
+ await storage.removeTip(tip.id);assert.equal(storage.readTips().length,0);
+ const malformed={...extra,date:'2026-02-30'};
+ await assert.rejects(storage.importData(JSON.stringify([malformed]),false),/Datum/);
+ assert.equal(storage.readDraws().length,count+1);
+});

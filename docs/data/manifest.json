@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "generatedAt": "2026-10-03T11:22:53.720991+02:00",
+  "through": "2026-10-03",
+  "sources": [
+    {
+      "url": "https://www.westlotto.de/westlotto-medien/zahlen-fakten/gewinnzahlendownload/lotto6aus49.zip",
+      "sha256": "5ec50db49035e8b8e778094b9f1e5f9a279dba16363fa9cbd6dd3265a2f0ce2e"
+    },
+    {
+      "url": "https://www.westlotto.de/westlotto-medien/zahlen-fakten/gewinnzahlendownload/eurojackpot.zip",
+      "sha256": "9691fe4bb7d92ff2882c494c24d85ec694eed72407a565071ba6af45ae2cb02c"
+    },
+    {
+      "url": "https://www.westlotto.de/westlotto-medien/zahlen-fakten/gewinnzahlendownload/lotto_mittwoch.zip",
+      "sha256": "a301947525552ca147a8008797617d6f7d6550a31b49a62a5e8da37da3737b12"
+    },
+    {
+      "url": "https://www.westlotto.de/wlinfo/WL_InfoService?gruppe=ErgebnisDownload&client=wldl&jahr_von=2022&jahr_bis=2026&spielart=LOTTO&format=csv",
+      "sha256": "2896911ee3f849a0f4dc6b5502974a5f0f3a40338ab71b46e302f8d3eae04573"
+    },
+    {
+      "url": "https://www.westlotto.de/wlinfo/WL_InfoService?gruppe=ErgebnisDownload&client=wldl&jahr_von=2022&jahr_bis=2026&spielart=EJ&format=csv",
+      "sha256": "f5dfd63619463dd67e8cba203cca0e44864b0f2d39282738b4fd87ee29711be4"
+    }
+  ],
+  "games": {
+    "lotto": {
+      "count": 6563,
+      "first": "1955-10-09",
+      "last": "2026-09-30",
+      "quotasFrom": "2022-01-01"
+    },
+    "euro": {
+      "count": 995,
+      "first": "2012-03-23",
+      "last": "2026-10-02",
+      "quotasFrom": "2022-01-01"
+    }
+  },
+  "notes": [
+    "WestLotto archive including Wednesday A/B draws from 1986-06-04; former 7/38 excluded.",
+    "Historical quotas standardized from 2022; unoccupied prize classes have null payouts.",
+    "Older supernumbers are absent when the source has no unambiguous value."
+  ]
+}
