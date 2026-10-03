@@ -49,7 +49,7 @@ export class LocalAssistant {
   private closed = false;
   private interrupted = false;
 
-  constructor(onProgress: (progress: number) => void) {
+  constructor(private readonly onProgress: (progress: number) => void) {
     this.worker = new Worker(
       new URL("./assistant.worker.ts", import.meta.url),
       { type: "module" },
@@ -59,15 +59,19 @@ export class LocalAssistant {
     });
     // A cancelled runtime may have no pending call to receive the rejection.
     void this.failure.catch(() => {});
+    this.engine = this.createEngine();
+  }
+
+  private createEngine() {
     this.worker.onerror = () =>
       this.rejectFailure?.(
         new Error("Die lokale KI wurde unterbrochen. Starte sie erneut."),
       );
-    this.engine = new WebWorkerMLCEngine(this.worker, {
+    return new WebWorkerMLCEngine(this.worker, {
       appConfig: modelConfig,
       logLevel: "WARN",
       initProgressCallback: ({ progress }) => {
-        if (!this.closed) onProgress(Math.min(1, Math.max(0, progress)));
+        if (!this.closed) this.onProgress(Math.min(1, Math.max(0, progress)));
       },
     });
   }
@@ -89,12 +93,19 @@ export class LocalAssistant {
           )
         )
           throw error;
-        // Reload resumes already cached artifacts and also releases the GPU
-        // state left by a failed initialization. Cancellation still wins.
+        // Discard the entire failed runtime, including partial GPU state and
+        // in-flight downloads. Shared model-cache entries survive the worker.
+        this.worker.onerror = null;
+        this.worker.terminate();
         await Promise.race([
           new Promise((resolve) => setTimeout(resolve, 3000 * (attempt + 1))),
           this.failure,
         ]);
+        this.worker = new Worker(
+          new URL("./assistant.worker.ts", import.meta.url),
+          { type: "module" },
+        );
+        this.engine = this.createEngine();
       }
     }
   }
