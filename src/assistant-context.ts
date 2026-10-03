@@ -153,6 +153,9 @@ export function visibleAssistantText(raw: string) {
   return value
     .replace(/<think>[\s\S]*?(?:<\/think>|$)/g, "")
     .replace(/<\/think>/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
     .trimStart();
 }
 

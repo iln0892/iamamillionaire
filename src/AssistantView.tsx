@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Bot, Check, Info, LoaderCircle, Send, ShieldCheck, Square } from "lucide-react";
 import { games, statistics, type Draw, type Filters, type Game, type Tip } from "./domain";
-import { assistantError, describeFilters, type ChatMessage, type GeneratedSelection } from "./assistant-context";
+import { assistantError, describeFilters, visibleAssistantText, type ChatMessage, type GeneratedSelection } from "./assistant-context";
 import { assistantRequest } from "./assistant-request";
 import { CloudAssistant } from "./assistant-runtime";
 
@@ -57,7 +57,7 @@ export default function AssistantView({ active, game, ranged, filters, generated
       await runtime.current.answer(
         assistantRequest({ game, ranged: official, filters, generated, saved, messages: request }),
         (text) => {
-          if (attempt === version.current) setMessages(old => old.map(m => m.id === replyId ? { ...m, content: text } : m));
+          if (attempt === version.current) setMessages(old => old.map(m => m.id === replyId ? { ...m, content: visibleAssistantText(text) } : m));
         },
         (label) => {
           if (attempt === version.current) setMessages(old => old.map(m => m.id === replyId
