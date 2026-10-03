@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "tsc -b && vite build && node scripts/prepare-pages.mjs",
+    "build:vercel": "tsc -b && vite build --base=/ && node scripts/prepare-pages.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test": "tsx --test tests/*.test.ts",
     "data:update": "python3 scripts/update-data.py"

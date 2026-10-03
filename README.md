@@ -56,6 +56,12 @@ git push origin main
 
 Production: [iln0892.github.io/iamamillionaire](https://iln0892.github.io/iamamillionaire/). Die App und der Quellcode sind öffentlich zugänglich; persönliche Daten sind gerätelokal und werden nicht veröffentlicht. Deployment-Quellcode enthält keine API-Schlüssel. [GitHub-Dokumentation](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
+## Production über Vercel / main
+
+Vercel ist ebenfalls mit dem GitHub-Repository und `main` verbunden. `vercel.json` legt das Framework `vite`, den Install-Befehl `npm ci`, den Build-Befehl `npm run build:vercel` und das Ausgabe-Verzeichnis `docs` fest. Die Root Directory bleibt leer, da `package.json` im Repository-Hauptverzeichnis liegt. Das Projekt benötigt kein Next.js.
+
+`npm run build:vercel` erzeugt einen Build mit Basis-Pfad `/` für die Vercel-Domain. Der reguläre `npm run build` erzeugt weiterhin den GitHub-Pages-Build mit `/iamamillionaire/`; ausschließlich dieser Build wird in `docs/` committed. Vercel baut bei jedem Push auf `main` selbst neu. [Vercel-Konfiguration](https://vercel.com/docs/project-configuration/vercel-json).
+
 ## KI
 
 Das Orakel erzeugt Tipps unverändert mit lokalen Regeln und kryptografischem Zufall. Der KI-Assistent erklärt diese Auswahl und historische Statistiken; er verändert keine Regeln, erzeugt keine Tippfelder und prognostiziert keine Gewinner. Generierte Felder bleiben beim Wechsel zum Assistenten für die aktuelle Sitzung erhalten. Für die erste Nutzung „KI-Assistent“ öffnen und „KI laden & starten“ anklicken.
