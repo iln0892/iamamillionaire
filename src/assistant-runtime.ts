@@ -5,6 +5,7 @@ import {
 } from "@mlc-ai/web-llm";
 import {
   containsUnsupportedForecast,
+  assistantError,
   visibleAssistantText,
   type assistantMessages,
 } from "./assistant-context";
@@ -72,10 +73,30 @@ export class LocalAssistant {
   }
 
   async load(model: AssistantModel) {
-    await Promise.race([
-      this.engine.reload(model, { context_window_size: 4096 }),
-      this.failure,
-    ]);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await Promise.race([
+          this.engine.reload(model, { context_window_size: 4096 }),
+          this.failure,
+        ]);
+        return;
+      } catch (error) {
+        if (
+          this.closed ||
+          attempt === 2 ||
+          !/NetworkError|Modell-Datei|Failed to fetch/i.test(
+            assistantError(error),
+          )
+        )
+          throw error;
+        // Reload resumes already cached artifacts and also releases the GPU
+        // state left by a failed initialization. Cancellation still wins.
+        await Promise.race([
+          new Promise((resolve) => setTimeout(resolve, 3000 * (attempt + 1))),
+          this.failure,
+        ]);
+      }
+    }
   }
 
   async answer(
