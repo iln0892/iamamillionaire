@@ -1,6 +1,6 @@
 # millionaire · Dein Lotto-Labor
 
-Private Einzelbenutzer-App zur Analyse von LOTTO 6aus49 und Eurojackpot. Deutsche Oberfläche, offizielles WestLotto-Archiv, lokale SQLite-Datenbank, kein Login und keine externen KI-Aufrufe.
+Persönliches Lotto-Labor zur Analyse von LOTTO 6aus49 und Eurojackpot. Deutsche Oberfläche, offizielles WestLotto-Archiv, lokale SQLite-Datenbank, regelbasierte Tipps und ein lokaler KI-Assistent. Kein Login und keine externen KI-API-Aufrufe.
 
 ## Starten
 
@@ -18,6 +18,7 @@ Die App läuft unter `http://127.0.0.1:5173/iamamillionaire/`. Schriften, SQLite
 - Ziehungsarchiv mit Datum-/Zahlensuche, Jahresfilter, Gewinnquoten und historischen Varianten.
 - Häufigkeiten, Ziehungsabstände, Summen, Parität und Dekaden.
 - Regelbasierte Tipps mit konfigurierbaren Filtern, Quicktipp, Speichern und Export.
+- KI-Assistent mit echten, lokal im Browser berechneten Antworten zu Filtern, Statistiken und den ersten drei zuletzt erzeugten Tippfeldern.
 - Häufige Zahlenpaare und Tripel sowie rollierende Häufigkeitsverläufe.
 - Backtests in einem Worker: gleiche Anzahl Felder, unabhängige Zufallsstrategie, reproduzierbarer Seed, zeitlich korrekte Historie.
 - JSON-/CSV-Import mit Prüfung und Transaktion; Konflikte überschreiben keine Ziehungen. Export als JSON, CSV und SQLite.
@@ -57,10 +58,18 @@ Production: [iln0892.github.io/iamamillionaire](https://iln0892.github.io/iamami
 
 ## KI
 
-Das Orakel verwendet lokale Regeln und Zufall. Es wird bewusst nicht als KI-Vorhersage dargestellt. Der exportierbare KI-Briefing-Text enthält die verwendeten Daten und verlangt sachliche Erklärungen. Eine echte KI-Anbindung benötigt später einen Server-Endpunkt und dort gespeicherte Zugangsdaten; API-Schlüssel gehören nicht in diese statische Browser-App.
+Das Orakel erzeugt Tipps unverändert mit lokalen Regeln und kryptografischem Zufall. Der KI-Assistent erklärt diese Auswahl und historische Statistiken; er verändert keine Regeln, erzeugt keine Tippfelder und prognostiziert keine Gewinner. Generierte Felder bleiben beim Wechsel zum Assistenten für die aktuelle Sitzung erhalten. Für die erste Nutzung „KI-Assistent“ öffnen und „KI laden & starten“ anklicken.
+
+Die KI verwendet [WebLLM](https://github.com/mlc-ai/web-llm) 0.2.85 in einem eigenen Worker. Zur Wahl stehen [Qwen3.5](https://huggingface.co/Qwen/Qwen3.5-4B) 4B (etwa 2,4 GB erster Download, etwa 4 GB GPU-Speicher) und Qwen3.5 2B (etwa 1,1 GB Download, etwa 2,3 GB GPU-Speicher, einfachere Antworten). Benötigt HTTPS oder localhost, WebGPU mit `shader-f16` und ausreichend Speicher. Die Browser-App bleibt ohne passende Hardware als regelbasiertes Labor benutzbar.
+
+Modellgewichte und Tokenizer werden erst beim Start von Hugging Face, die Modellbibliothek von MLC über GitHub geladen und im Browser gecacht. Fragen, persönliche Tippfelder und berechnete Kontextdaten werden nicht an diese Anbieter gesendet. Der Gesprächsverlauf bleibt im Arbeitsspeicher für die Sitzung; Spielwechsel und „Neues Gespräch“ leeren ihn. Der Modellcache kann separat gelöscht werden, ohne die Lotto-Datenbank zu verändern. Antworten werden als Text gerendert und können Fehler enthalten.
+
+Der Kontext unterscheidet Archiv und gewählten Analysezeitraum sowie aktuelle Filter und die Filter zum Erzeugungszeitpunkt. Freie Importtexte werden nicht als Kontext übernommen. Pro Anfrage werden maximal die letzten zwei Frage-Antwort-Paare und die aktuelle Frage verwendet. Antworten sind auf 420 Tokens begrenzt. Ein zusätzlicher Textcheck verwirft typische unbelegte Gewinnprognosen, kann aber nicht alle Fehler erkennen. Keine externen API-Schlüssel, laufenden KI-API-Kosten oder zusätzlicher Backend-Dienst nötig. Die Modell-Lizenz ist Apache 2.0; Hinweise zur Runtime liegen in `public/licenses/`.
+
+Eine spätere OpenAI-Anbindung kann über einen separaten Backend-Dienst erfolgen. API-Schlüssel gehören dabei ausschließlich auf den Server, niemals in die öffentliche statische App: [offizielle OpenAI-Dokumentation](https://developers.openai.com/api/reference/overview).
 
 ## Prüfung
 
-`npm test` prüft den vollständigen Snapshot, historische Grenzen, falsche Imports, Filter, Gewinnklassen, Reproduzierbarkeit und den Ausschluss zukünftiger Daten aus der Tippauswahl. `npm run build` prüft TypeScript und erzeugt den Production-Build. Die Oberfläche wird zusätzlich auf Desktop und Mobil geprüft.
+`npm test` prüft den vollständigen Snapshot, historische Grenzen, falsche Imports, Filter, Gewinnklassen, Reproduzierbarkeit, den Ausschluss zukünftiger Daten und die Spiel-/Zeitraumtrennung im KI-Kontext. `npm run build` prüft TypeScript und erzeugt den Production-Build. Echte Modellantworten sowie Desktop-/Mobilansichten werden zusätzlich im Browser geprüft.
 
 18+. Keine Gewinngarantie. [Hilfe bei Glücksspielproblemen](https://www.check-dein-spiel.de/).

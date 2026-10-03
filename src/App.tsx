@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Bookmark,
+  Bot,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -51,12 +52,15 @@ import {
   persistenceError,
   type Manifest,
 } from "./storage";
+import AssistantView from "./AssistantView";
+import type { GeneratedSelection, GeneratedTips } from "./assistant-context";
 
 type View =
   | "overview"
   | "history"
   | "statistics"
   | "oracle"
+  | "assistant"
   | "patterns"
   | "waves"
   | "backtest"
@@ -66,6 +70,7 @@ const navigation: [View, string, typeof Grid2X2][] = [
   ["history", "Ziehungen", History],
   ["statistics", "Statistiken", BarChart3],
   ["oracle", "Orakel & Tipps", Sparkles],
+  ["assistant", "KI-Assistent", Bot],
   ["patterns", "Muster erkennen", Layers3],
   ["waves", "Wellentheorie", Activity],
   ["backtest", "Schon Millionär?", FlaskConical],
@@ -84,6 +89,10 @@ const titles: Record<View, [string, string]> = {
   oracle: [
     "Deine Regeln. Deine Zahlen.",
     "Zufällige Tipps, passend zu deiner Auswahl.",
+  ],
+  assistant: [
+    "Deine Fragen. Ein neuer Blick.",
+    "KI erklärt dein Labor. Deine Regeln wählen die Tipps.",
   ],
   patterns: [
     "Muster unter der Lupe.",
@@ -318,6 +327,9 @@ export default function App() {
     lotto: defaultFilters("lotto"),
     euro: defaultFilters("euro"),
   });
+  const [generated, setGenerated] = useState<
+    Partial<Record<Game, GeneratedSelection>>
+  >({});
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const notify = (message: string) => {
     setToast(message);
@@ -775,8 +787,26 @@ export default function App() {
                     }
                   }}
                   notify={notify}
+                  selection={generated[game]}
+                  onGenerated={(tips, usedFilters) =>
+                    setGenerated((old) => ({
+                      ...old,
+                      [game]: { tips, filters: { ...usedFilters } },
+                    }))
+                  }
+                  onAssistant={() => navigate("assistant")}
                 />
               )}
+              <AssistantView
+                active={view === "assistant"}
+                game={game}
+                history={all}
+                ranged={ranged}
+                filters={currentFilters}
+                generated={generated[game]}
+                saved={saved}
+                onOracle={() => navigate("oracle")}
+              />
               {view === "patterns" && <PatternsView draws={ranged} />}
               {view === "waves" && (
                 <WavesView key={game} game={game} draws={ranged} />
@@ -1120,6 +1150,9 @@ function OracleView({
   save,
   remove,
   notify,
+  selection,
+  onGenerated,
+  onAssistant,
 }: {
   game: Game;
   history: Draw[];
@@ -1133,16 +1166,23 @@ function OracleView({
   }) => Promise<void>;
   remove: (id: string) => Promise<void>;
   notify: (s: string) => void;
+  selection?: GeneratedSelection;
+  onGenerated: (tips: GeneratedTips, filters: Filters) => void;
+  onAssistant: () => void;
 }) {
   const [count, setCount] = useState(3),
-    [tips, setTips] = useState<ReturnType<typeof generateTips>>([]),
+    [tips, setTips] = useState<ReturnType<typeof generateTips>>(
+      selection?.tips ?? [],
+    ),
     [error, setError] = useState(""),
     [tab, setTab] = useState<"new" | "saved">("new"),
     [busy, setBusy] = useState(false);
   const generate = () => {
     setError("");
     try {
-      setTips(generateTips(game, filters, history, count));
+      const next = generateTips(game, filters, history, count);
+      setTips(next);
+      onGenerated(next, filters);
       setTab("new");
     } catch (e) {
       setError((e as Error).message);
@@ -1314,22 +1354,18 @@ function OracleView({
               className="text-button"
               onClick={() => {
                 try {
-                  setTips(
-                    generateTips(
-                      game,
-                      {
-                        ...filters,
-                        sum: false,
-                        parity: false,
-                        decades: false,
-                        patterns: false,
-                        historic: false,
-                        birthdays: false,
-                      },
-                      history,
-                      count,
-                    ),
-                  );
+                  const usedFilters = {
+                    ...filters,
+                    sum: false,
+                    parity: false,
+                    decades: false,
+                    patterns: false,
+                    historic: false,
+                    birthdays: false,
+                  };
+                  const next = generateTips(game, usedFilters, history, count);
+                  setTips(next);
+                  onGenerated(next, usedFilters);
                   setTab("new");
                   setError("");
                 } catch (e) {
@@ -1339,7 +1375,12 @@ function OracleView({
             >
               Quicktipp ohne Filter
             </button>
-            <p className="caption">Regelbasiert · keine KI-API verbunden</p>
+            <p className="caption">
+              Regelbasiert · mit KI-Unterstützung im Assistenten
+            </p>
+            <button className="text-button" onClick={onAssistant}>
+              <Bot size={16} /> Auswahl mit KI besprechen
+            </button>
           </section>
           <Notice>
             Eine lange Zahlenpause ist kein Signal. Auch frühere
